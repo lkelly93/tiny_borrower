@@ -1,3 +1,23 @@
+/*
+    I have three enums:
+        Type
+            This is my basic types Int, String, and a Pair... not much to it other than
+            Strings are dynamically allocated.
+        Statement:
+            I think of these as operations, they have some sort of action that they
+            take, see the comment above each enum for an explication. I am not actually implementing this
+            language and I will probably rewrite this so I am going to assume that no-one purposely tries
+            to break these.
+        Expr:
+            I had a couple instances where I wanted a Statement to take a another Statement or
+            a Type as an argument so I created this type. This type evaluates to either a Type (a literal)
+            or a Statement.
+                    (1) Statement::Let("a", Type::Int32(5))
+                    (2) Statement::Let("a", Add(Type::Int32(5), Type::Int32(5)))
+            For example both (1) and (2) should be viable but in Rust I can't
+            have the Statement::Let enum take a Type or a Statement so I created
+            a new enum that can be either. It does make the ASTs (see main.rs) kind of convoluted.
+*/
 pub mod language {
     use std::fmt;
 
