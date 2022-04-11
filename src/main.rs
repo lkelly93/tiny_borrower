@@ -1,21 +1,58 @@
 mod lang;
 use lang::language::Expr;
+use lang::language::Statement;
+use lang::language::Type;
 
 fn main() {
+    /*
+     *  Equivalent to the following code:
+     *      let str = String::from("Nobody expects the spanish inquisition.")
+     *      let str_ref = &str
+     */
     let good1 = [
-        Expr::Let("str", &Expr::String("This program is fine.")),
-        Expr::Let("str_ref1", &Expr::Reference("str")),
-        Expr::Let("str_ref1", &Expr::Reference("str")),
-        Expr::Let("str_ref3", &Expr::Reference("str")),
+        Statement::Let(
+            "str",
+            &Expr::Type(&Type::String("Nobody expects the spanish inquisition.")),
+        ),
+        Statement::Let("str_ref", &Expr::Statement(&Statement::Reference("str"))),
     ];
+
+    /*
+     *  Equivalent to the following code:
+     *      let str = String::from("Nobody expects the spanish inquisition.")
+     *      let str_ref = &str
+     *      {
+     *          let str_ref_in_scope = &str
+     *      }
+     */
     let good2 = [
-        Expr::Let("str", &Expr::String("This program is fine.")),
-        Expr::LetMut("str_mut_ref1", &Expr::Reference("str")),
+        Statement::Let(
+            "str",
+            &Expr::Type(&Type::String("Nobody expects the spanish inquisition.")),
+        ),
+        Statement::Let("str_ref", &Expr::Statement(&Statement::Reference("str"))),
+        Statement::Scope(&Expr::Statement(&Statement::Let(
+            "str_ref_in_scope",
+            &Expr::Statement(&Statement::Get("str")),
+        ))),
     ];
+
+    /*
+     *  Equivalent to the following code:
+     *      let str = String::from("Nobody expects the spanish inquisition.")
+     *      let str_ref = &str
+     *      let mut str_mut_ref = &str // BAD mutable reference when non-mutable references exist.
+     */
     let bad = [
-        Expr::Let("str", &Expr::String("This program is not.")),
-        Expr::Let("str_ref1", &Expr::Reference("str")),
-        Expr::LetMut("str_mut_ref1", &Expr::Reference("str")),
+        Statement::Let(
+            "str",
+            &Expr::Type(&Type::String("Its merely a flesh wound.")),
+        ),
+        Statement::Let("str_ref", &Expr::Statement(&Statement::Reference("str"))),
+        Statement::LetMut(
+            "str_mut_ref",
+            &Expr::Statement(&Statement::Reference("str")),
+        ),
     ];
     println!("Printing good1");
     check(&good1[..]);
@@ -25,26 +62,9 @@ fn main() {
     check(&bad[..]);
 }
 
-fn check(program: &[Expr]) -> bool {
+fn check(program: &[Statement]) -> bool {
     for e in program.iter() {
         println!("{}", e)
     }
     return true;
 }
-
-// #[derive(Debug)]
-// enum Type<'a> {
-//     Int32(i32),
-//     String(&'a str),
-//     Pair(&'a Type<'a>, &'a Type<'a>),
-// }
-
-// impl<'a> fmt::Display for Type<'a> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             Type::Int32(i) => write!(f, "Int32({})", i),
-//             Type::String(s) => write!(f, "String(\"{}\")", s),
-//             Type::Pair(l, r) => write!(f, "Pair(({},{}))", l, r),
-//         }
-//     }
-// }
