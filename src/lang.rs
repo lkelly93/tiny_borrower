@@ -23,21 +23,21 @@ pub mod language {
 
     #[derive(Debug)]
     #[allow(dead_code)]
-    pub enum Type<'a> {
+    pub enum Value<'a> {
         // A primitive int
         Int32(i32),
         // A dynamically allocated String
         String(&'a str),
         // A pair of types, it should take ownership of a string if it has one.
-        Pair(&'a Type<'a>, &'a Type<'a>),
+        Pair(&'a Value<'a>, &'a Value<'a>),
     }
 
-    impl<'a> fmt::Display for Type<'a> {
+    impl<'a> fmt::Display for Value<'a> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                Type::Int32(i) => write!(f, "Type::In32({})", i),
-                Type::String(s) => write!(f, "Type::String(\"{}\")", s),
-                Type::Pair(a, b) => write!(f, "Type::Pair({}, {})", a, b),
+                Value::Int32(i) => write!(f, "Type::In32({})", i),
+                Value::String(s) => write!(f, "Type::String(\"{}\")", s),
+                Value::Pair(a, b) => write!(f, "Type::Pair({}, {})", a, b),
             }
         }
     }
@@ -46,9 +46,9 @@ pub mod language {
     #[allow(dead_code)]
     pub enum Statement<'a> {
         // Gets the first item from a Type::Pair, if provided argument is not a pair panic
-        First(&'a Type<'a>),
+        First(&'a Value<'a>),
         // Gets the second item from a Type::Pair, if provided argument is not a pair panic
-        Second(&'a Type<'a>),
+        Second(&'a Value<'a>),
         // Adds a new Scope Expressions created in scope should be "cleaned up" after it closes
         Scope(&'a Expr<'a>),
         // Creates a reference from to the provided variable. If no variable in environment, panic.
@@ -81,7 +81,7 @@ pub mod language {
     #[derive(Debug)]
     #[allow(dead_code)]
     pub enum Expr<'a> {
-        Type(&'a Type<'a>),
+        Type(&'a Value<'a>),
         Statement(&'a Statement<'a>),
     }
     impl<'a> fmt::Display for Expr<'a> {

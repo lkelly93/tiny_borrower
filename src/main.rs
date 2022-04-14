@@ -1,7 +1,7 @@
 mod lang;
 use lang::language::Expr;
 use lang::language::Statement;
-use lang::language::Type;
+use lang::language::Value;
 
 fn main() {
     /*
@@ -12,7 +12,7 @@ fn main() {
     let good1 = [
         Statement::Let(
             "str",
-            &Expr::Type(&Type::String("Nobody expects the spanish inquisition.")),
+            &Expr::Type(&Value::String("Nobody expects the spanish inquisition.")),
         ),
         Statement::Let("str_ref", &Expr::Statement(&Statement::Reference("str"))),
     ];
@@ -28,7 +28,7 @@ fn main() {
     let good2 = [
         Statement::Let(
             "str",
-            &Expr::Type(&Type::String("Nobody expects the spanish inquisition.")),
+            &Expr::Type(&Value::String("Nobody expects the spanish inquisition.")),
         ),
         Statement::Let("str_ref", &Expr::Statement(&Statement::Reference("str"))),
         Statement::Scope(&Expr::Statement(&Statement::Let(
@@ -46,7 +46,7 @@ fn main() {
     let bad = [
         Statement::Let(
             "str",
-            &Expr::Type(&Type::String("Its merely a flesh wound.")),
+            &Expr::Type(&Value::String("Its merely a flesh wound.")),
         ),
         Statement::Let("str_ref", &Expr::Statement(&Statement::Reference("str"))),
         Statement::LetMut(
