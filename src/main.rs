@@ -77,9 +77,21 @@ fn print_program(program: &[Statement]) {
 fn type_check(program: &[Statement]) -> bool {
     for s in program.iter() {
         match s {
-            Statement::Scope(vec) => return type_check(vec),
-            Statement::Let(_, t, expr) => return check_individual(t, expr),
-            Statement::LetMut(_, t, expr) => return check_individual(t, expr),
+            Statement::Scope(vec) => {
+                if !type_check(vec) {
+                    return false;
+                }
+            }
+            Statement::Let(_, t, expr) => {
+                if !check_individual(t, expr) {
+                    return false;
+                }
+            }
+            Statement::LetMut(_, t, expr) => {
+                if !check_individual(t, expr) {
+                    return false;
+                }
+            }
         }
     }
     return true;
