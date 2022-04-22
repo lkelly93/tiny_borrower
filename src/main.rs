@@ -13,10 +13,11 @@ fn main() {
         Statement::Let(
             "str",
             Type::String,
-            &Expr::String("Nobody Expects the Spanish Inquisition."),
+            Box::new(Expr::String("Nobody Expects the Spanish Inquisition.")),
         ),
-        Statement::Let("str_ref", Type::String, &Expr::Reference("str")),
+        Statement::Let("str_ref", Type::String, Box::new(Expr::Reference("str"))),
     ])];
+
     /*
      *  Equivalent to the following code:
      *      let str = String::from("Nobody expects the spanish inquisition.")
@@ -29,14 +30,14 @@ fn main() {
         Statement::Let(
             "str",
             Type::String,
-            &Expr::String("Nobody Expects the Spanish Inquisition."),
+            Box::new(Expr::String("Nobody Expects the Spanish Inquisition.")),
         ),
         Statement::Scope(vec![Statement::LetMut(
             "str_mut_ref",
             Type::String,
-            &Expr::Reference("str"),
+            Box::new(Expr::Reference("str")),
         )]),
-        Statement::Let("str_ref", Type::String, &Expr::Reference("str")),
+        Statement::Let("str_ref", Type::String, Box::new(Expr::Reference("str"))),
     ])];
 
     /*
@@ -49,11 +50,15 @@ fn main() {
         Statement::Let(
             "str",
             Type::String,
-            &Expr::String("Nobody Expects the Spanish Inquisition."),
+            Box::new(Expr::String("Nobody Expects the Spanish Inquisition.")),
         ),
-        Statement::Let("str_ref", Type::String, &Expr::Reference("str")),
+        Statement::Let("str_ref", Type::String, Box::new(Expr::Reference("str"))),
         // Mutable reference while other reference exists.
-        Statement::LetMut("str_mut_ref", Type::String, &Expr::Reference("str")),
+        Statement::LetMut(
+            "str_mut_ref",
+            Type::String,
+            Box::new(Expr::Reference("str")),
+        ),
     ])];
     println!("Printing good1");
     print_program(&good1[..]);
@@ -62,7 +67,7 @@ fn main() {
     println!("\n\nPrinting bad");
     print_program(&bad[..]);
 
-    println!("Valid:{}", type_check(&good1));
+    // println!("Valid:{}", type_check(&good1));
 }
 
 fn print_program(program: &[Statement]) {
@@ -75,39 +80,53 @@ fn print_program(program: &[Statement]) {
  * Attempts to type Check the provided program.... probably fails
  */
 fn type_check(program: &[Statement]) -> bool {
-    for s in program.iter() {
-        match s {
-            Statement::Scope(vec) => {
-                if !type_check(vec) {
-                    return false;
-                }
-            }
-            Statement::Let(_, t, expr) => {
-                if !check_individual(t, expr) {
-                    return false;
-                }
-            }
-            Statement::LetMut(_, t, expr) => {
-                if !check_individual(t, expr) {
-                    return false;
-                }
-            }
-        }
-    }
     return true;
+    // for s in program.iter() {
+    //     match s {
+    //         Statement::Scope(vec) => {
+    //             if !type_check(vec) {
+    //                 return false;
+    //             }
+    //         }
+    //         Statement::Let(_, t, expr) => {
+    //             if !check_individual(t, expr) {
+    //                 return false;
+    //             }
+    //         }
+    //         Statement::LetMut(_, t, expr) => {
+    //             if !check_individual(t, expr) {
+    //                 return false;
+    //             }
+    //         }
+    //     }
+    // }
+    // return true;
 }
 
-fn check_individual(t: &Type, expr: &Expr) -> bool {
-    match (t, expr) {
-        (Type::Int32, Expr::Int32(_)) => return true,
-        (Type::Int32, Expr::Add(a, b)) => {
-            return check_individual(&Type::Int32, a) && check_individual(&Type::Int32, b)
+fn check_expr<'a>(expr: &Expr) -> Type {
+    match (expr) {
+        Expr::Int32(_) => return Type::Int32,
+        Expr::String(_) => return Type::String,
+        Expr::Pair(a, b) => {
+            return Type::Pair(Box::new(check_expr(a)), Box::new(check_expr(b)))
         }
-        (Type::String, Expr::String(_)) => return true,
-        (Type::Pair(t_a, t_b), Expr::Pair(e_a, e_b)) => {
-            check_individual(t_a, e_a) && check_individual(t_b, e_b)
+        Expr::First(f) => {
+            let t = check_expr(f);
+            if t != Type::
         }
-        // It is starting to get complicated...
-        (_, _) => false,
+
+        }
     }
+    // match (t, expr) {
+    //     (Type::Int32, Expr::Int32(_)) => return true,
+    //     (Type::Int32, Expr::Add(a, b)) => {
+    //         return check_individual(&Type::Int32, a) && check_individual(&Type::Int32, b)
+    //     }
+    //     (Type::String, Expr::String(_)) => return true,
+    //     (Type::Pair(t_a, t_b), Expr::Pair(e_a, e_b)) => {
+    //         check_individual(t_a, e_a) && check_individual(t_b, e_b)
+    //     }
+    //     // It is starting to get complicated...
+    //     (_, _) => false,
+    // }
 }

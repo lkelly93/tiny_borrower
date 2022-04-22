@@ -3,13 +3,14 @@ pub mod language {
 
     #[derive(Debug)]
     #[allow(dead_code)]
-    pub enum Type<'a> {
+    pub enum Type {
         Int32,
         String,
-        Pair(&'a Type<'a>, &'a Type<'a>),
+        // Pair(&'a Type<'a>, &'a Type<'a>),
+        Pair(Box<Type>, Box<Type>),
     }
 
-    impl<'a> fmt::Display for Type<'a> {
+    impl<'a> fmt::Display for Type {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
                 Type::Int32 => write!(f, "Int32"),
@@ -23,8 +24,8 @@ pub mod language {
     #[allow(dead_code)]
     pub enum Statement<'a> {
         Scope(Vec<Statement<'a>>),
-        Let(&'a str, Type<'a>, &'a Expr<'a>),
-        LetMut(&'a str, Type<'a>, &'a Expr<'a>),
+        Let(&'a str, Type, Box<Expr<'a>>),
+        LetMut(&'a str, Type, Box<Expr<'a>>),
     }
 
     impl<'a> fmt::Display for Statement<'a> {
@@ -36,17 +37,19 @@ pub mod language {
             }
         }
     }
+
     #[derive(Debug)]
     #[allow(dead_code)]
     pub enum Expr<'a> {
         Int32(i32),
         String(&'a str),
-        Pair(&'a Expr<'a>, &'a Expr<'a>),
-        First(&'a Expr<'a>),
-        Second(&'a Expr<'a>),
+        Pair(Box<Expr<'a>>, Box<Expr<'a>>),
+        First(Box<Expr<'a>>),
+        Second(Box<Expr<'a>>),
         Reference(&'a str),
-        Add(&'a Expr<'a>, &'a Expr<'a>),
+        Add(Box<Expr<'a>>, Box<Expr<'a>>),
         Get(&'a str),
+        Deference(Box<Expr<'a>>),
     }
 
     impl<'a> fmt::Display for Expr<'a> {
@@ -60,6 +63,7 @@ pub mod language {
                 Expr::Reference(r) => write!(f, "Reference({})", r),
                 Expr::Add(a, b) => write!(f, "Add({}, {})", a, b),
                 Expr::Get(g) => write!(f, "Get({})", g),
+                Expr::Deference(g) => write!(f, "Dereference({})", g),
             }
         }
     }
