@@ -6,8 +6,8 @@ pub mod language {
     pub enum Type {
         Int32,
         String,
-        // Pair(&'a Type<'a>, &'a Type<'a>),
         Pair(Box<Type>, Box<Type>),
+        Reference(Box<Type>),
     }
 
     impl<'a> fmt::Display for Type {
@@ -16,6 +16,18 @@ pub mod language {
                 Type::Int32 => write!(f, "Int32"),
                 Type::String => write!(f, "String"),
                 Type::Pair(a, b) => write!(f, "{} * {}", a, b),
+                Type::Reference(r) => write!(f, "&{}", r),
+            }
+        }
+    }
+
+    impl Clone for Type {
+        fn clone(&self) -> Type {
+            match self {
+                Type::Int32 => Type::Int32,
+                Type::String => Type::String,
+                Type::Pair(a, b) => Type::Pair(a.clone(), b.clone()),
+                Type::Reference(t) => Type::Reference(t.clone()),
             }
         }
     }
@@ -31,7 +43,13 @@ pub mod language {
     impl<'a> fmt::Display for Statement<'a> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                Statement::Scope(a) => write!(f, "{:?}", a),
+                Statement::Scope(a) => {
+                    _ = write!(f, "Scope(");
+                    for s in a.iter() {
+                        _ = write!(f, "{}, ", s);
+                    }
+                    return write!(f, ")");
+                }
                 Statement::Let(n, t, e) => write!(f, "Let({}, {}, {})", n, t, e),
                 Statement::LetMut(n, t, e) => write!(f, "LetMut({}, {}, {})", n, t, e),
             }
@@ -49,7 +67,7 @@ pub mod language {
         Reference(&'a str),
         Add(Box<Expr<'a>>, Box<Expr<'a>>),
         Get(&'a str),
-        Deference(Box<Expr<'a>>),
+        Dereference(Box<Expr<'a>>),
     }
 
     impl<'a> fmt::Display for Expr<'a> {
@@ -63,7 +81,7 @@ pub mod language {
                 Expr::Reference(r) => write!(f, "Reference({})", r),
                 Expr::Add(a, b) => write!(f, "Add({}, {})", a, b),
                 Expr::Get(g) => write!(f, "Get({})", g),
-                Expr::Deference(g) => write!(f, "Dereference({})", g),
+                Expr::Dereference(g) => write!(f, "Dereference({})", g),
             }
         }
     }

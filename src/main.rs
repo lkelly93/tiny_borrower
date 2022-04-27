@@ -2,7 +2,11 @@ mod lang;
 use lang::language::Expr;
 use lang::language::Statement;
 use lang::language::Type;
+use std::collections::HashMap;
 
+struct Variable_info {
+    t: Type,
+}
 fn main() {
     /*
      *  Equivalent to the following code:
@@ -15,7 +19,11 @@ fn main() {
             Type::String,
             Box::new(Expr::String("Nobody Expects the Spanish Inquisition.")),
         ),
-        Statement::Let("str_ref", Type::String, Box::new(Expr::Reference("str"))),
+        Statement::Let(
+            "str_ref",
+            Type::Reference(Box::new(Type::String)),
+            Box::new(Expr::Reference("str")),
+        ),
     ])];
 
     /*
@@ -34,10 +42,14 @@ fn main() {
         ),
         Statement::Scope(vec![Statement::LetMut(
             "str_mut_ref",
-            Type::String,
+            Type::Reference(Box::new(Type::String)),
             Box::new(Expr::Reference("str")),
         )]),
-        Statement::Let("str_ref", Type::String, Box::new(Expr::Reference("str"))),
+        Statement::Let(
+            "str_ref",
+            Type::Reference(Box::new(Type::String)),
+            Box::new(Expr::Reference("str")),
+        ),
     ])];
 
     /*
@@ -52,11 +64,15 @@ fn main() {
             Type::String,
             Box::new(Expr::String("Nobody Expects the Spanish Inquisition.")),
         ),
-        Statement::Let("str_ref", Type::String, Box::new(Expr::Reference("str"))),
+        Statement::Let(
+            "str_ref",
+            Type::Reference(Box::new(Type::String)),
+            Box::new(Expr::Reference("str")),
+        ),
         // Mutable reference while other reference exists.
         Statement::LetMut(
             "str_mut_ref",
-            Type::String,
+            Type::Reference(Box::new(Type::String)),
             Box::new(Expr::Reference("str")),
         ),
     ])];
@@ -72,7 +88,7 @@ fn main() {
 
 fn print_program(program: &[Statement]) {
     for e in program.iter() {
-        println!("{}", e)
+        println!("{:}", e)
     }
 }
 
@@ -80,53 +96,103 @@ fn print_program(program: &[Statement]) {
  * Attempts to type Check the provided program.... probably fails
  */
 fn type_check(program: &[Statement]) -> bool {
-    return true;
-    // for s in program.iter() {
-    //     match s {
-    //         Statement::Scope(vec) => {
-    //             if !type_check(vec) {
-    //                 return false;
-    //             }
-    //         }
-    //         Statement::Let(_, t, expr) => {
-    //             if !check_individual(t, expr) {
-    //                 return false;
-    //             }
-    //         }
-    //         Statement::LetMut(_, t, expr) => {
-    //             if !check_individual(t, expr) {
-    //                 return false;
-    //             }
-    //         }
-    //     }
-    // }
-    // return true;
-}
-
-fn check_expr<'a>(expr: &Expr) -> Type {
-    match (expr) {
-        Expr::Int32(_) => return Type::Int32,
-        Expr::String(_) => return Type::String,
-        Expr::Pair(a, b) => {
-            return Type::Pair(Box::new(check_expr(a)), Box::new(check_expr(b)))
-        }
-        Expr::First(f) => {
-            let t = check_expr(f);
-            if t != Type::
-        }
-
+    let env: HashMap<String, Variable_info> = HashMap::new();
+    // TODO: How do I implement scoping environment? Multiple HashMaps????
+    for s in program.iter() {
+        match s {
+            Statement::Scope(vec) => {
+                if !type_check(vec) {
+                    return false;
+                }
+            }
+            Statement::Let(_, t, expr) => {
+                if !check_individual(t, expr) {
+                    return false;
+                }
+            }
+            Statement::LetMut(_, t, expr) => {
+                if !check_individual(t, expr) {
+                    return false;
+                }
+            }
         }
     }
-    // match (t, expr) {
-    //     (Type::Int32, Expr::Int32(_)) => return true,
-    //     (Type::Int32, Expr::Add(a, b)) => {
-    //         return check_individual(&Type::Int32, a) && check_individual(&Type::Int32, b)
-    //     }
-    //     (Type::String, Expr::String(_)) => return true,
-    //     (Type::Pair(t_a, t_b), Expr::Pair(e_a, e_b)) => {
-    //         check_individual(t_a, e_a) && check_individual(t_b, e_b)
-    //     }
-    //     // It is starting to get complicated...
-    //     (_, _) => false,
-    // }
+    return true;
+}
+
+fn check_expr<'a>(
+    expr: &Expr,
+    static_env: &mut HashMap<String, Variable_info>,
+) -> Result<Type, String> {
+    match expr {
+        Expr::Int32(_) => return Ok(Type::Int32),
+        Expr::String(_) => return Ok(Type::String),
+        Expr::Pair(a, b) => {
+            let type_a = check_expr(a, static_env);
+            let type_b = check_expr(b, static_env);
+            match (type_a, type_b) {
+                (Ok(l), Ok(r)) => return Ok(Type::Pair(Box::new(l), Box::new(r))),
+                (Err(e), _) => return Err(e),
+                (_, Err(e)) => return Err(e),
+            }
+        }
+        Expr::First(f) => {
+            let possible = check_expr(f, static_env);
+            if let Ok(type_f) = possible {
+                match type_f {
+                    Type::Pair(a, _) => return Ok(*a),
+                    _ => {
+                        return Err(String::from(
+                            "first was called something that did not resolve to a Type::Pair",
+                        ))
+                    }
+                }
+            } else {
+                return possible;
+            }
+        }
+        Expr::Second(f) => {
+            let possible = check_expr(f, static_env);
+            if let Ok(type_f) = possible {
+                match type_f {
+                    Type::Pair(_, a) => return Ok(*a),
+                    _ => {
+                        return Err(String::from(
+                            "second was called something that did not resolve to a Type::Pair",
+                        ))
+                    }
+                }
+            } else {
+                return possible;
+            }
+        }
+        Expr::Reference(a) => match static_env.get(*a) {
+            None => {
+                return Err(String::from(
+                    "can't create a reference of a variable not in this scope.",
+                ))
+            }
+            Some(d) => return Ok(d.t.clone()),
+        },
+        Expr::Add(left, right) => {
+            let type_left = check_expr(left, static_env);
+            let type_right = check_expr(right, static_env);
+            match (type_left, type_right) {
+                (Ok(Type::Int32), Ok(Type::Int32)) => return Ok(Type::Int32),
+                (Err(e), _) => return Err(e),
+                (_, Err(e)) => return Err(e),
+                (_, _) => return Err(String::from("add on accepts integers.")),
+            }
+        }
+        Expr::Get(s) => match static_env.get(*s) {
+            None => {
+                return Err(String::from(format!(
+                    "the variable {} does not exist in this static environment.",
+                    s
+                )))
+            }
+            Some(d) => return Ok(d.t.clone()),
+        },
+        Expr::Dereference(a) => check_expr(a, static_env),
+    }
 }
