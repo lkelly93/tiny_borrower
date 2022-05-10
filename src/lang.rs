@@ -2,6 +2,7 @@ pub mod language {
     use std::fmt;
 
     #[derive(Debug)]
+    #[derive(PartialEq)]
     #[allow(dead_code)]
     pub enum Type {
         Int32,

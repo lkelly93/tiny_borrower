@@ -4,7 +4,7 @@ use lang::language::Statement;
 use lang::language::Type;
 use std::collections::HashMap;
 
-struct Variable_info {
+struct VariableInfo {
     t: Type,
 }
 fn main() {
@@ -13,6 +13,14 @@ fn main() {
      *      let str = String::from("Nobody expects the spanish inquisition.")
      *      let str_ref = &str
      */
+    // let bad = vec![Statement::Let(
+    //     "str",
+    //     Type::Int32,
+    //     Box::new(Expr::String("Blah")),
+    // )];
+    // let mut env: HashMap<String, VariableInfo> = HashMap::new();
+    // let check_2: bool = type_check(bad.as_slice(), &mut env);
+    // println!("{}", check_2);
     let good1 = vec![Statement::Scope(vec![
         Statement::Let(
             "str",
@@ -83,6 +91,9 @@ fn main() {
     println!("\n\nPrinting bad");
     print_program(&bad[..]);
 
+    let mut env: HashMap<String, VariableInfo> = HashMap::new();
+    let check_1: bool = type_check(good1.as_slice(), &mut env);
+    println!("Valid:{}", check_1)
     // println!("Valid:{}", type_check(&good1));
 }
 
@@ -92,27 +103,63 @@ fn print_program(program: &[Statement]) {
     }
 }
 
+// fn borrow_check(program: &[Statement] env: &mut HashMap<String, VariableInfo>) -> bool {
+//     for s in program.iter() {
+//         match s {
+//             Statement::Scope(vec) => {
+//                 return false;
+//             }
+//             Statement::Let()
+//         }
+//     }
+//     return true;
+// }
+
 /**
  * Attempts to type Check the provided program.... probably fails
  */
-fn type_check(program: &[Statement]) -> bool {
-    let env: HashMap<String, Variable_info> = HashMap::new();
-    // TODO: How do I implement scoping environment? Multiple HashMaps????
+fn type_check(program: &[Statement], env: &mut HashMap<String, VariableInfo>) -> bool {
+    // let mut env: HashMap<String, VariableInfo> = HashMap::new();
     for s in program.iter() {
         match s {
             Statement::Scope(vec) => {
-                if !type_check(vec) {
-                    return false;
+                let mut new_env: HashMap<String, VariableInfo> = HashMap::new();
+                for (key, value) in &*env {
+                    new_env.insert(key.clone(), VariableInfo { t: value.t.clone() });
+                }
+                type_check(vec, &mut new_env);
+            }
+            Statement::Let(str, t, expr) => {
+                let result = check_expr(&expr, env);
+                match result {
+                    Ok(type_result) => {
+                        if type_result == *t {
+                            env.insert(str.to_string(), VariableInfo { t: t.clone() });
+                        } else {
+                            return false;
+                        }
+                    }
+                    Err(err) => {
+                        println!("{}", err);
+                        return false;
+                    }
                 }
             }
-            Statement::Let(_, t, expr) => {
-                if !check_individual(t, expr) {
-                    return false;
-                }
-            }
-            Statement::LetMut(_, t, expr) => {
-                if !check_individual(t, expr) {
-                    return false;
+            Statement::LetMut(str, t, expr) => {
+                let result = check_expr(&expr, env);
+                match result {
+                    Ok(type_result) => {
+                        if type_result == *t {
+                            env.insert(str.to_string(), VariableInfo { t: t.clone() });
+                        } else {
+                            println!("{} != {}", type_result, t);
+                            return false;
+                        }
+                    }
+                    Err(err) => {
+                        println!("{}", err);
+                        return false;
+                    }
                 }
             }
         }
@@ -122,7 +169,7 @@ fn type_check(program: &[Statement]) -> bool {
 
 fn check_expr<'a>(
     expr: &Expr,
-    static_env: &mut HashMap<String, Variable_info>,
+    static_env: &mut HashMap<String, VariableInfo>,
 ) -> Result<Type, String> {
     match expr {
         Expr::Int32(_) => return Ok(Type::Int32),
@@ -172,7 +219,7 @@ fn check_expr<'a>(
                     "can't create a reference of a variable not in this scope.",
                 ))
             }
-            Some(d) => return Ok(d.t.clone()),
+            Some(d) => return Ok(Type::Reference(Box::new(d.t.clone()))),
         },
         Expr::Add(left, right) => {
             let type_left = check_expr(left, static_env);
@@ -193,6 +240,7 @@ fn check_expr<'a>(
             }
             Some(d) => return Ok(d.t.clone()),
         },
+        // TODO: UNDO REFERENCE.
         Expr::Dereference(a) => check_expr(a, static_env),
     }
 }
