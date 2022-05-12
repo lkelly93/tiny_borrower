@@ -13,14 +13,6 @@ fn main() {
      *      let str = String::from("Nobody expects the spanish inquisition.")
      *      let str_ref = &str
      */
-    // let bad = vec![Statement::Let(
-    //     "str",
-    //     Type::Int32,
-    //     Box::new(Expr::String("Blah")),
-    // )];
-    // let mut env: HashMap<String, VariableInfo> = HashMap::new();
-    // let check_2: bool = type_check(bad.as_slice(), &mut env);
-    // println!("{}", check_2);
     let good1 = vec![Statement::Scope(vec![
         Statement::Let(
             "str",
@@ -84,17 +76,61 @@ fn main() {
             Box::new(Expr::Reference("str")),
         ),
     ])];
-    println!("Printing good1");
-    print_program(&good1[..]);
-    println!("\n\nPrinting good2");
-    print_program(&good2[..]);
-    println!("\n\nPrinting bad");
-    print_program(&bad[..]);
+    //println!("Printing good1");
+    //print_program(&good1[..]);
+    //println!("\n\nPrinting good2");
+    //print_program(&good2[..]);
+    //println!("\n\nPrinting bad");
+    //print_program(&bad[..]);
 
-    let mut env: HashMap<String, VariableInfo> = HashMap::new();
-    let check_1: bool = type_check(good1.as_slice(), &mut env);
-    println!("Valid:{}", check_1)
+    //let mut env: HashMap<String, VariableInfo> = HashMap::new();
+    //let check_1: bool = type_check(good1.as_slice(), &mut env);
+    //println!("Valid:{}", check_1)
     // println!("Valid:{}", type_check(&good1));
+    test_borrows();
+}
+
+fn test_borrows() {
+    let good1 = vec![Statement::Scope(vec![
+        Statement::Let(
+            "str",
+            Type::String,
+            Box::new(Expr::String("Nobody Expects the Spanish Inquisition.")),
+        ),
+        Statement::Let(
+            "str_ref",
+            Type::Reference(Box::new(Type::String)),
+            Box::new(Expr::Reference("str")),
+        ),
+    ])];
+    // let mut vars: HashMap<String, ReferenceType> = HashMap::new();
+    // println!(
+    //     "Single Reference.\n\tExpected true.\n\tActual = {}",
+    //     borrow_check(&good1, &mut vars)
+    // );
+
+    let bad1 = vec![Statement::Scope(vec![
+        Statement::Let(
+            "str",
+            Type::String,
+            Box::new(Expr::String("Nobody Expects the Spanish Inquisition.")),
+        ),
+        Statement::Let(
+            "str_ref",
+            Type::Reference(Box::new(Type::String)),
+            Box::new(Expr::Reference("str")),
+        ),
+        Statement::LetMut(
+            "str_ref_mut",
+            Type::Reference(Box::new(Type::String)),
+            Box::new(Expr::Reference("str")),
+        ),
+    ])];
+    let mut vars: HashMap<String, ReferenceType> = HashMap::new();
+    println!(
+        "Single Reference Then Mutable Reference.\n\tExpected false.\n\tActual = {}",
+        borrow_check(&bad1, &mut vars)
+    );
 }
 
 fn print_program(program: &[Statement]) {
@@ -103,17 +139,59 @@ fn print_program(program: &[Statement]) {
     }
 }
 
-// fn borrow_check(program: &[Statement] env: &mut HashMap<String, VariableInfo>) -> bool {
-//     for s in program.iter() {
-//         match s {
-//             Statement::Scope(vec) => {
-//                 return false;
-//             }
-//             Statement::Let()
-//         }
-//     }
-//     return true;
-// }
+enum ReferenceType {
+    Mutable,
+    NotMutable,
+}
+impl Clone for ReferenceType {
+    fn clone(&self) -> ReferenceType {
+        match self {
+            ReferenceType::Mutable => ReferenceType::Mutable,
+            ReferenceType::NotMutable => ReferenceType::NotMutable,
+        }
+    }
+}
+
+fn borrow_check(program: &[Statement], vars: &mut HashMap<String, ReferenceType>) -> bool {
+    for s in program.iter() {
+        match s {
+            Statement::Scope(vec) => {
+                let mut new_vars: HashMap<String, ReferenceType> = HashMap::new();
+                for (key, value) in &*vars {
+                    new_vars.insert(key.clone(), value.clone());
+                }
+                borrow_check(vec, &mut new_vars);
+            }
+            Statement::Let(_, Type::Reference(_), expr) => {
+                let expr_unboxed = *expr ;
+                match expr_unboxed {
+                   Expr::Reference(str)  => return true,
+                    _ => return false,
+                }
+
+                //None => {
+                    //vars.insert(str.to_string(), ReferenceType::NotMutable);
+                //}
+                //Some(rtype) => match rtype {
+                    //ReferenceType::Mutable => return false,
+                    //ReferenceType::NotMutable => continue,
+                //},
+            },
+            Statement::LetMut(_, Type::Reference(str), _) => match vars.get(&str.to_string()) {
+                None => {
+                    vars.insert(str.to_string(), ReferenceType::Mutable);
+                }
+                Some(_) => return false,
+            },
+            // We only care about Let[Mut] if the type is a Reference, in all other
+            // cases we just continue on.
+            _ => ()
+            // I don't know if I need to handle the last bullet point on the google doc... I don't
+            // think I do because of the way the language is set up.
+        }
+    }
+    return true;
+}
 
 /**
  * Attempts to type Check the provided program.... probably fails
