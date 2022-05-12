@@ -103,11 +103,11 @@ fn test_borrows() {
             Box::new(Expr::Reference("str")),
         ),
     ])];
-    // let mut vars: HashMap<String, ReferenceType> = HashMap::new();
-    // println!(
-    //     "Single Reference.\n\tExpected true.\n\tActual = {}",
-    //     borrow_check(&good1, &mut vars)
-    // );
+    let mut vars: HashMap<String, ReferenceType> = HashMap::new();
+    println!(
+        "Single Reference.\n\tExpected true.\n\tActual = {}",
+        borrow_check(&good1, &mut vars)
+    );
 
     let bad1 = vec![Statement::Scope(vec![
         Statement::Let(
@@ -153,6 +153,7 @@ impl Clone for ReferenceType {
 }
 
 fn borrow_check(program: &[Statement], vars: &mut HashMap<String, ReferenceType>) -> bool {
+    let mut valid = true;
     for s in program.iter() {
         match s {
             Statement::Scope(vec) => {
@@ -160,37 +161,46 @@ fn borrow_check(program: &[Statement], vars: &mut HashMap<String, ReferenceType>
                 for (key, value) in &*vars {
                     new_vars.insert(key.clone(), value.clone());
                 }
-                borrow_check(vec, &mut new_vars);
+                valid = borrow_check(vec, &mut new_vars);
             }
             Statement::Let(_, Type::Reference(_), expr) => {
-                let expr_unboxed = *expr ;
+                let expr_unboxed = &**expr;
                 match expr_unboxed {
-                   Expr::Reference(str)  => return true,
-                    _ => return false,
+                    Expr::Reference(str) => {
+                        let unboxed_str = *str;
+                        match vars.get(unboxed_str) {
+                            None => {
+                                vars.insert(unboxed_str.to_string(), ReferenceType::NotMutable);
+                            }
+                            Some(rtype) => match rtype {
+                                ReferenceType::Mutable => return false,
+                                ReferenceType::NotMutable => (),
+                            },
+                        }
+                    }
+                    _ => (),
                 }
-
-                //None => {
-                    //vars.insert(str.to_string(), ReferenceType::NotMutable);
-                //}
-                //Some(rtype) => match rtype {
-                    //ReferenceType::Mutable => return false,
-                    //ReferenceType::NotMutable => continue,
-                //},
-            },
-            Statement::LetMut(_, Type::Reference(str), _) => match vars.get(&str.to_string()) {
-                None => {
-                    vars.insert(str.to_string(), ReferenceType::Mutable);
+            }
+            Statement::LetMut(_, Type::Reference(_), expr) => {
+                let expr_unboxed = &**expr;
+                match expr_unboxed {
+                    Expr::Reference(str) => {
+                        let unboxed_str = *str;
+                        match vars.insert(unboxed_str.to_string(), ReferenceType::Mutable) {
+                            None => (),
+                            Some(_) => return false,
+                        }
+                    }
+                    _ => (),
                 }
-                Some(_) => return false,
-            },
+            }
             // We only care about Let[Mut] if the type is a Reference, in all other
             // cases we just continue on.
-            _ => ()
-            // I don't know if I need to handle the last bullet point on the google doc... I don't
-            // think I do because of the way the language is set up.
+            _ => (), // I don't know if I need to handle the last bullet point on the google doc... I don't
+                     // think I do because of the way the language is set up.
         }
     }
-    return true;
+    return valid;
 }
 
 /**
